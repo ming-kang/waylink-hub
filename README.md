@@ -70,8 +70,6 @@ python manage.py runserver
 
 ## 部署
 
-生产环境部署参考 `docs/DEPLOYMENT.md`：
-
 ```bash
 # 安装生产依赖
 pip install -r requirements.txt
@@ -85,14 +83,6 @@ python manage.py migrate
 # 启动 Gunicorn
 gunicorn -c gunicorn.conf.py waylink.wsgi:application
 ```
-
-## 团队
-
-| 成员 | 负责方向 |
-|-----|---------|
-| 方明康 | 后端开发 |
-| 陈卓 | 软硬件集成（ESP32） |
-| 陈鹏宇 | 前端设计 |
 
 ---
 
