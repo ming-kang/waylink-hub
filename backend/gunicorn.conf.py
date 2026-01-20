@@ -7,8 +7,8 @@ Run with: gunicorn -c gunicorn.conf.py waylink.wsgi:application
 import os
 import multiprocessing
 
-# Directory
-base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Directory - gunicorn.conf.py is in /backend/, so base_dir is /backend
+base_dir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(base_dir)
 
 # Workers
