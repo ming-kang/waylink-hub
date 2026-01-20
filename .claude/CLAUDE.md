@@ -11,7 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | Layer | Technology |
 |-------|------------|
 | Backend | Python + Django + Django REST Framework |
-| Database | SQLite (development), PostgreSQL (production ready) |
+| Database | SQLite (unified for dev and production) |
 | Authentication | JWT (账号密码登录) |
 | API Documentation | Markdown docs in `docs/api/` |
 | Deployment | VPS (Linux + Gunicorn + Nginx) |
@@ -91,7 +91,7 @@ See `docs/api/` for detailed endpoint documentation.
 - Use Django REST Framework serializers for API responses
 - JWT authentication required for most endpoints (except auth)
 - Device communication: ESP32 sends HTTP requests to backend APIs
-- SQLite used for development; configure PostgreSQL for production
+- SQLite used for both development and production (simplified deployment)
 - **Always update `docs/DEVELOPMENT_PLAN.md`** when a phase is completed
 
 ## Team

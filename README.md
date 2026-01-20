@@ -14,7 +14,7 @@
 | 层级 | 技术 |
 |-----|------|
 | 后端 | Python + Django + Django REST Framework |
-| 数据库 | SQLite（开发）/ PostgreSQL（生产） |
+| 数据库 | SQLite（开发/生产统一） |
 | 认证 | JWT 账号密码登录 |
 | 设备 | ESP32 硬件通信 |
 

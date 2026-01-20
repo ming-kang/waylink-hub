@@ -1,6 +1,7 @@
 """
 Production settings for WaylinkHub.
 
+Simplified deployment using SQLite (no PostgreSQL required).
 Copy this file to settings.py and configure for production use,
 or set DJANGO_SETTINGS_MODULE=waylink.settings_production
 """
@@ -17,7 +18,7 @@ from dotenv import load_dotenv
 load_dotenv(BASE_DIR / '.env')
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('SECRET_KEY')
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-change-this-in-production')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
@@ -80,17 +81,14 @@ TEMPLATES = [
 WSGI_APPLICATION = 'waylink.wsgi.application'
 
 
-# Database - PostgreSQL recommended for production
+# Database - SQLite for simplified deployment
+# For high-traffic production, consider migrating to PostgreSQL
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DB_NAME', 'waylink'),
-        'USER': os.environ.get('DB_USER', 'waylink'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
-        'HOST': os.environ.get('DB_HOST', 'localhost'),
-        'PORT': os.environ.get('DB_PORT', '5432'),
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
