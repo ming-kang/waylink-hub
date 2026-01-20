@@ -1,5 +1,6 @@
 from django.urls import path
 from .views import (
+    HealthCheckView,
     DashboardStatsView,
     AllOrdersView,
     AdminCabinetsView,
@@ -9,6 +10,9 @@ from .views import (
 )
 
 urlpatterns = [
+    # 健康检查
+    path('health/', HealthCheckView.as_view(), name='health-check'),
+
     # 仪表盘统计
     path('stats/', DashboardStatsView.as_view(), name='admin-stats'),
 

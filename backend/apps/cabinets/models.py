@@ -35,6 +35,14 @@ class Cabinet(models.Model):
     # 柜门状态
     is_locked = models.BooleanField(default=True, verbose_name='是否锁定')
 
+    # 电机锁状态
+    lock_angle = models.IntegerField(default=0, verbose_name='锁舌角度(0-360度)')
+    lock_locked = models.BooleanField(default=True, verbose_name='电机锁是否锁定')
+
+    # 物品检测状态（红外传感器）
+    has_item = models.BooleanField(null=True, blank=True, verbose_name='柜内是否有物品')
+    item_detected_at = models.DateTimeField(null=True, blank=True, verbose_name='物品检测时间')
+
     # 时间戳
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')

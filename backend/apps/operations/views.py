@@ -1,17 +1,60 @@
 from datetime import datetime, timedelta
 from django.utils import timezone
+from django.db import connection
 from django.db.models import Count, Avg, Sum
 from django.contrib.auth import get_user_model
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 
 from apps.orders.models import Order
 from apps.cabinets.models import Cabinet
 from apps.devices.models import Device, DeviceLog
 
 User = get_user_model()
+
+
+class HealthCheckView(APIView):
+    """健康检查端点"""
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        """检查服务健康状态"""
+        # 检查数据库连接
+        db_status = 'healthy'
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute('SELECT 1')
+        except Exception as e:
+            db_status = f'unhealthy: {str(e)}'
+
+        # 检查设备在线状态
+        device_status = 'healthy'
+        try:
+            offline_threshold = timezone.now() - timedelta(minutes=10)
+            offline_count = Device.objects.filter(
+                is_active=True,
+                last_heartbeat__lt=offline_threshold
+            ).count()
+            if offline_count > 0:
+                device_status = f'warning: {offline_count} devices offline'
+        except Exception as e:
+            device_status = f'error: {str(e)}'
+
+        overall_status = 'healthy' if db_status == 'healthy' else 'degraded'
+
+        response_data = {
+            'status': overall_status,
+            'timestamp': timezone.now().isoformat(),
+            'checks': {
+                'database': db_status,
+                'devices': device_status,
+            }
+        }
+
+        status_code = 200 if overall_status == 'healthy' else 503
+        return Response(response_data, status=status_code)
 
 
 class DashboardStatsView(APIView):

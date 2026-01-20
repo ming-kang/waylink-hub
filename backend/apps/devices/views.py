@@ -101,14 +101,22 @@ class DeviceStatusReportView(APIView):
 
         # 更新柜子状态
         cabinet_status = serializer.validated_data['cabinet_status']
-        for cabinet_id, is_open in cabinet_status.items():
+        for cabinet_id, status_data in cabinet_status.items():
             try:
                 cabinet = device.bound_cabinets.get(cabinet_id=cabinet_id)
-                cabinet.is_locked = not is_open
-                if is_open:
-                    cabinet.status = 'in_use'
-                else:
-                    cabinet.status = 'available'
+                door_closed = status_data['door']
+                cabinet.lock_angle = status_data['lock_angle']
+                cabinet.lock_locked = status_data['lock_locked']
+                cabinet.has_item = status_data['has_item']
+
+                # 柜门关闭时锁定，开启时解锁
+                cabinet.is_locked = not door_closed
+
+                # 更新物品检测时间
+                if cabinet.has_item is not None:
+                    from django.utils import timezone
+                    cabinet.item_detected_at = timezone.now()
+
                 cabinet.save()
             except Exception as e:
                 # 记录错误日志
@@ -116,7 +124,7 @@ class DeviceStatusReportView(APIView):
                     device=device,
                     log_type='error',
                     message=f'更新柜子状态失败: {str(e)}',
-                    data={'cabinet_id': cabinet_id}
+                    data={'cabinet_id': cabinet_id, 'status_data': status_data}
                 )
 
         # 更新电量
@@ -377,4 +385,106 @@ class DeviceLogsView(APIView):
             'code': 0,
             'message': 'success',
             'data': serializer.data
+        })
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class DeviceStatusQueryView(APIView):
+    """服务器主动查询柜子状态（ESP32响应）"""
+    permission_classes = [AllowAny]
+
+    def get(self, request, device_id):
+        """ESP32 轮询获取服务器下发的状态查询指令"""
+        try:
+            device = Device.objects.get(device_id=device_id)
+        except Device.DoesNotExist:
+            return Response({
+                'code': 404,
+                'message': '设备不存在'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        # 检查是否有待执行的查询指令
+        pending_query = DeviceLog.objects.filter(
+            device=device,
+            log_type='status_query',
+            created_at__gte=device.last_heartbeat or timezone.now() - timezone.timedelta(minutes=1)
+        ).order_by('-created_at')[:1]
+
+        if pending_query:
+            query_log = pending_query[0]
+            # 返回需要查询的柜子ID列表
+            cabinet_ids = query_log.data.get('cabinet_ids', [])
+            return Response({
+                'code': 0,
+                'message': '有待查询指令',
+                'data': {
+                    'command': 'query_status',
+                    'cabinet_ids': cabinet_ids,
+                    'timestamp': query_log.created_at.isoformat()
+                }
+            })
+
+        return Response({
+            'code': 0,
+            'message': '无待执行指令',
+            'data': {'command': 'none'}
+        })
+
+
+class CabinetStatusQueryView(APIView):
+    """服务器主动查询柜子状态（管理员调用）"""
+    permission_classes = [IsAdminUser]
+
+    def get(self, request, device_id):
+        """查询指定设备的柜子状态"""
+        try:
+            device = Device.objects.get(device_id=device_id)
+        except Device.DoesNotExist:
+            return Response({
+                'code': 404,
+                'message': '设备不存在'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        # 检查设备是否在线
+        if not device.is_online():
+            return Response({
+                'code': 400,
+                'message': '设备离线，无法查询'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # 获取绑定柜子ID列表
+        cabinet_ids = list(device.bound_cabinets.values_list('cabinet_id', flat=True))
+
+        # 记录查询指令（ESP32轮询获取）
+        DeviceLog.objects.create(
+            device=device,
+            log_type='status_query',
+            message=f'服务器查询柜子状态',
+            data={'cabinet_ids': cabinet_ids, 'query_time': timezone.now().isoformat()}
+        )
+
+        # 等待 ESP32 上报状态（这里返回已记录的本地状态）
+        from apps.cabinets.models import Cabinet
+        cabinets = device.bound_cabinets.all()
+        cabinet_data = []
+        for cabinet in cabinets:
+            cabinet_data.append({
+                'cabinet_id': cabinet.cabinet_id,
+                'door_closed': not cabinet.is_locked,
+                'lock_angle': cabinet.lock_angle,
+                'lock_locked': cabinet.lock_locked,
+                'has_item': cabinet.has_item,
+                'item_detected_at': cabinet.item_detected_at.isoformat() if cabinet.item_detected_at else None,
+                'last_updated': cabinet.updated_at.isoformat()
+            })
+
+        return Response({
+            'code': 0,
+            'message': '查询指令已下发，请等待设备响应',
+            'data': {
+                'device_id': device.device_id,
+                'status': device.status,
+                'last_heartbeat': device.last_heartbeat.isoformat() if device.last_heartbeat else None,
+                'cabinets': cabinet_data
+            }
         })

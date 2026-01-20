@@ -61,12 +61,34 @@ class DeviceHeartbeatSerializer(serializers.Serializer):
     battery_level = serializers.IntegerField(required=False, min_value=0, max_value=100, label='电量')
 
 
+class CabinetStatusSerializer(serializers.Serializer):
+    """单个柜子状态序列化器"""
+    door = serializers.BooleanField(
+        label='柜门状态',
+        help_text='true=关闭, false=开启'
+    )
+    lock_angle = serializers.IntegerField(
+        min_value=0,
+        max_value=360,
+        label='锁舌角度',
+        help_text='电机锁舌转动角度(0-360度)'
+    )
+    lock_locked = serializers.BooleanField(
+        label='锁是否锁定',
+        help_text='true=锁定, false=解锁'
+    )
+    has_item = serializers.BooleanField(
+        label='是否有物品',
+        help_text='true=有物品, false=无物品'
+    )
+
+
 class DeviceStatusReportSerializer(serializers.Serializer):
     """状态上报序列化器"""
     cabinet_status = serializers.DictField(
-        child=serializers.BooleanField(),
+        child=CabinetStatusSerializer(),
         label='柜子状态',
-        help_text='{"A001": true, "A002": false} 表示A001开启，A002关闭'
+        help_text='{"A001": {"door": true, "lock_angle": 0, "lock_locked": true, "has_item": false}}'
     )
     battery_level = serializers.IntegerField(required=False, min_value=0, max_value=100, label='电量')
 
