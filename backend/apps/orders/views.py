@@ -7,7 +7,10 @@ from rest_framework.permissions import IsAuthenticated
 from django.db import transaction
 
 from .models import Order
+from django.contrib.auth import get_user_model
 from .serializers import OrderSerializer, OrderListSerializer, OrderCreateSerializer, OrderPaymentSerializer, OrderExtendSerializer
+
+User = get_user_model()
 
 
 class OrderViewSet(viewsets.ModelViewSet):
@@ -92,7 +95,7 @@ class OrderPaymentView(APIView):
             }, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            order = Order.objects.get(id=order_id, user=request.user)
+            order = Order.objects.select_for_update().get(id=order_id, user=request.user)
         except Order.DoesNotExist:
             return Response({
                 'code': 404,
@@ -108,15 +111,22 @@ class OrderPaymentView(APIView):
         # 模拟支付处理
         payment_method = serializer.validated_data['payment_method']
 
-        # 余额支付处理
+        # 余额支付处理（使用原子操作防止竞态条件）
         if payment_method == 'balance':
-            if request.user.balance < order.total_amount:
+            from django.db.models import F
+            updated = User.objects.filter(
+                id=request.user.id,
+                balance__gte=order.total_amount
+            ).update(balance=F('balance') - order.total_amount)
+
+            if updated == 0:
                 return Response({
                     'code': 400,
                     'message': '余额不足'
                 }, status=status.HTTP_400_BAD_REQUEST)
-            request.user.balance -= order.total_amount
-            request.user.save()
+
+            # 重新加载用户以获取更新后的余额
+            request.user.refresh_from_db()
 
         # 更新订单状态
         now = timezone.now()

@@ -156,8 +156,17 @@ class DeviceOpenCabinetView(APIView):
 
     def get(self, request, device_id):
         """ESP32 轮询此接口获取待执行的指令"""
+        # 获取并验证API密钥（可选，支持向后兼容）
+        api_key = request.headers.get('X-API-Key') or request.data.get('api_key')
+
         try:
             device = Device.objects.get(device_id=device_id)
+            # 验证API密钥（如果提供了）
+            if api_key and device.api_key != api_key:
+                return Response({
+                    'code': 401,
+                    'message': 'API密钥验证失败'
+                }, status=status.HTTP_401_UNAUTHORIZED)
         except Device.DoesNotExist:
             return Response({
                 'code': 404,
@@ -395,8 +404,17 @@ class DeviceStatusQueryView(APIView):
 
     def get(self, request, device_id):
         """ESP32 轮询获取服务器下发的状态查询指令"""
+        # 获取并验证API密钥（可选，支持向后兼容）
+        api_key = request.headers.get('X-API-Key') or request.data.get('api_key')
+
         try:
             device = Device.objects.get(device_id=device_id)
+            # 验证API密钥（如果提供了）
+            if api_key and device.api_key != api_key:
+                return Response({
+                    'code': 401,
+                    'message': 'API密钥验证失败'
+                }, status=status.HTTP_401_UNAUTHORIZED)
         except Device.DoesNotExist:
             return Response({
                 'code': 404,

@@ -12,9 +12,11 @@ class CabinetSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'cabinet_id', 'size', 'size_display', 'location', 'station',
             'status', 'status_display', 'price_per_hour', 'device_id',
-            'is_locked', 'created_at', 'updated_at'
+            'is_locked', 'lock_angle', 'lock_locked', 'has_item', 'item_detected_at',
+            'created_at', 'updated_at'
         )
-        read_only_fields = ('status', 'is_locked', 'created_at', 'updated_at')
+        read_only_fields = ('status', 'is_locked', 'lock_angle', 'lock_locked',
+                           'has_item', 'item_detected_at', 'created_at', 'updated_at')
 
 
 class CabinetListSerializer(serializers.ModelSerializer):
